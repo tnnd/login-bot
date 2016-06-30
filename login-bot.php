@@ -27,10 +27,10 @@ date_default_timezone_set('Asia/Shanghai') ;
 $v2_cookie_life     = filemtime('v2ex.cookie')   ;
 $zimuzu_cookie_life = filemtime('zimuzu.cookie') ;
 $time               = time() ;
-if (($time - $zimuzu_cookie_life) == 43200) {
+if (($time - $zimuzu_cookie_life) >= 43200) {
 	file_put_contents('zimuzu.cookie', '') ;
 }
-if (($time - $v2_cookie_life) == 43200) {
+if (($time - $v2_cookie_life) >= 43200) {
 	file_put_contents('v2ex.cookie', '') ;
 }
 

@@ -1,1 +1,1 @@
-* */1 * * * /root/login-bot/login-bot.sh
+0 * * * * /root/login-bot/login-bot.sh
