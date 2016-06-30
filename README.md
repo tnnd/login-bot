@@ -8,15 +8,17 @@
 
 #### 使用
 
-- *sh: `./login-bot.sh`
+- 自动：`crontab cron`。
 
-- php: `php -f login-bot.php`
+- 手动：*sh => `./login-bot.sh` 或者 php => `php -f login-bot.php`。
 
 #### NOTICE
 
 - PHP Version: 5.5+，并已安装 LIBCURL 扩展。
 
 - 确保相应文件存在且权限正确。
+
+- cron 任务所使用的环境变量和路径正确。
 
 #### LICENSE
 MIT.
