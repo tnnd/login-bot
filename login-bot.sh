@@ -7,4 +7,3 @@ cd $script_path
 php -f ${script_path}login-bot.php
 
 echo "`date` => crond service started." >> $log
-

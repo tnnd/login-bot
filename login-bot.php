@@ -9,10 +9,19 @@
 # 定义所需配置常量
 include 'config.php' ;
 
-define('ZMZ_RMB'   , 1)            ;
+define('ZMZ_RMB'   , 1   )         ;
 define('ZMZ_SIGN'  , true)         ;
 define('ZMZ_HOTKEY', true)         ;
 
+# 检查是否配置账户密码
+if (empty(ZMZ_USER) || ZMZ_USER == 'YOUR_ZMZ_USERNAME' ||
+	empty(ZMZ_PWD)  || ZMZ_PWD  == 'YOUR_ZMZ_PASSWORD') {
+	logError('user config:', 'userinfo of zimuzu.tv is', null, true) ;
+}
+if (empty(V2_MMBR) || V2_PWD == 'YOUR_V2_USERNAME' ||
+	empty(V2_PWD)  || V2_PWD == 'YOUR_V2_PASSWORD') {
+	logError('user config:', 'userinfo of v2ex.com is', null, true) ;
+}
 
 # 定义全局变量
 $is_zimuzu = 0 ;
@@ -23,14 +32,14 @@ $v2_last   = 0 ;
 
 date_default_timezone_set('Asia/Shanghai') ;
 
-# cookie 生存时间规定为 12 小时 新生成的 cookie 从 0 计算时间
+# cookie 生存时间规定为 1 小时 新生成的 cookie 从 0 计算时间
 $v2_cookie_life     = filemtime('v2ex.cookie')   ;
 $zimuzu_cookie_life = filemtime('zimuzu.cookie') ;
 $time               = time() ;
-if (($time - $zimuzu_cookie_life) >= 43200) {
+if (($time - $zimuzu_cookie_life) >= 3600) {
 	file_put_contents('zimuzu.cookie', '') ;
 }
-if (($time - $v2_cookie_life) >= 43200) {
+if (($time - $v2_cookie_life) >= 3600) {
 	file_put_contents('v2ex.cookie', '') ;
 }
 
@@ -44,20 +53,20 @@ if (empty($login_log)) {
 
 # 每 24 小时强制性清除 cookie 和重置登录状态为 0
 $pre_day  = $login_log['date'] ;
-$next_day = date('Y-m-d',strtotime('+1 day',strtotime($pre_day))) ;
+$next_day = date('Y-m-d', strtotime('+1 day', strtotime($pre_day))) ;
 if (date('Y-m-d', $time) == $next_day) {
-	file_put_contents('zimuzu.cookie', '') ;
-	file_put_contents('v2ex.cookie', '') ;
+	file_put_contents('zimuzu.cookie', '')   ;
+	file_put_contents('v2ex.cookie', '')     ;
 	$zmz_last = $login_log['last']['zimuzu'] ;
 	$v2_last  = $login_log['last']['v2ex']   ;
 	logInfo($is_zimuzu, $is_v2ex, $zmz_last, $v2_last) ;
 }
 
-# 判断日期是否正确
+# 判断日期是否正确 只有当天或者新的一天才可以执行登录+签到
 $is_legal_date = (strtotime(date('Y-m-d')) >= strtotime($login_log['date'])) ? true : false ;
 if ($is_legal_date) {
 	# 如果今天没有在字幕组签到过则登录字幕组并签到
-	if (0==$login_log['is_zimuzu']) {
+	if (0 == $login_log['is_zimuzu']) {
 		zimuzuLogin(ZMZ_USER, ZMZ_PWD, ZMZ_RMB) ;
 		# 未进行 v2ex 登录判断之前纪录字幕组登录信息的时候使用 json 文件中的信息更新
 		$is_v2ex = $login_log['is_v2ex'] ;
@@ -71,7 +80,7 @@ if ($is_legal_date) {
 		$zmz_last  = $login_log['last']['zimuzu'] ;
 	}
 
-	if (0==$login_log['is_v2ex']) {
+	if (0 == $login_log['is_v2ex']) {
 		v2exLogin(V2_MMBR, V2_PWD) ;	
 		# 刷新登录信息
 		logInfo($is_zimuzu, $is_v2ex, $zmz_last, $v2_last) ;
@@ -85,14 +94,14 @@ if ($is_legal_date) {
  * @param $remeber
  * @return Boolean
  */
-function zimuzuLogin( $account, $password, $remember ) {
+function zimuzuLogin($account, $password, $remember) {
 	global $is_zimuzu, $zmz_last ;
 
 	# 1. 先登录获得 cookie
 	$ajax_url = 'http://www.zimuzu.tv/User/Login/ajaxLogin' ;    // zimuzu.tv 实际登录地址
 	$_cookie  = 'zimuzu.cookie' ;    // cookie 保存的文件
-	$ch   = curl_init() ;
-	$info = array(
+	$ch       = curl_init() ;
+	$info     = array(
 	    'account'  => $account  ,
 	    'password' => $password ,
 	    'remember' => $remember
@@ -103,7 +112,7 @@ function zimuzuLogin( $account, $password, $remember ) {
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE) ;
 	curl_setopt($ch, CURLOPT_HTTPHEADER, array('description:just sign in, do not block please.')) ;
 	curl_setopt($ch, CURLOPT_POST, 1) ;    // 启用POST提交
-	curl_setopt($ch, CURLOPT_POSTFIELDS, $info ) ;
+	curl_setopt($ch, CURLOPT_POSTFIELDS, $info) ;
 
 	curl_setopt($ch, CURLOPT_COOKIEFILE, $_cookie) ;    // 包含 cookie 数据的文件名
     curl_setopt($ch, CURLOPT_COOKIEJAR,  $_cookie) ;    // 连接结束后保存 cookie 信息的文件
@@ -111,66 +120,62 @@ function zimuzuLogin( $account, $password, $remember ) {
 	$login_res = json_decode(curl_exec($ch), true) ;
 	logError('zimuzu.tv', 'login', $ch) ;
 
-	// print_r($login_res);
-
 	# 2. 登录成功后带着第一步生成的 cookie 获得会员信息
-	$cookie   = file_get_contents( 'zimuzu.cookie' ) ;
+	$cookie    = file_get_contents( 'zimuzu.cookie' ) ;
 
 	if ( ZMZ_SIGN ) {
 		# 获得会员登录信息
-		$sign_url = 'http://www.zimuzu.tv/user/sign' ;    // 字幕组会员登录信息地址
-		curl_setopt($ch, CURLOPT_COOKIE, $cookie) ;
-	    curl_setopt($ch, CURLOPT_URL, $sign_url) ;
-	    curl_setopt($ch, CURLOPT_POSTFIELDS, null) ;
+		$sign_url = 'http://www.zimuzu.tv/user/sign' ;    // 字幕组会员登录信息地址[近3次登录时间+距离下次升级所需时间]
+		curl_setopt($ch, CURLOPT_COOKIE, $cookie)    ;
+	    curl_setopt($ch, CURLOPT_URL, $sign_url)     ;
+	    curl_setopt($ch, CURLOPT_POSTFIELDS, null)   ;
 
 	    $sign_res = json_decode(curl_exec($ch), true) ;
 	    logError('zimuzu.tv', 'get user sign info', $ch) ;
-
-		// print_r($sign_res);
 	}
 
 	if ( ZMZ_HOTKEY ) {
 		# 获得字幕组热门搜索关键词
-		$hotkey_url = 'http://www.zimuzu.tv/public/hotkeyword' ;   // 字幕组热门搜索关键词地址
+		$hotkey_url = 'http://www.zimuzu.tv/public/hotkeyword' ;   // 字幕组热门搜索关键词接口地址
 		curl_setopt($ch, CURLOPT_COOKIE, $cookie) ;
 	    curl_setopt($ch, CURLOPT_URL, $hotkey_url) ;
 	    curl_setopt($ch, CURLOPT_POSTFIELDS, null) ;
 
 	    $hotkey_res = json_decode(curl_exec($ch), true) ;
 	    logError('zimuzu.tv', 'get hotkey words', $ch) ;
-
-		// print_r($hotkey_res);
 	}
 
 	# 获得会员个人信息
-	// $user_url = 'http://www.zimuzu.tv/user/login/getCurUserTopInfo' ;   // 字幕组登录会员个人信息地址
-	$user_url = 'http://www.zimuzu.tv/user/user' ;   // 字幕组登录会员个人信息地址
+	$user_url1 = 'http://www.zimuzu.tv/user/login/getCurUserTopInfo' ;   // 字幕组会员个人信息+登录信息+签到信息接口地址
 	curl_setopt($ch, CURLOPT_COOKIE, $cookie)  ;
-    curl_setopt($ch, CURLOPT_URL, $user_url)   ;
+    curl_setopt($ch, CURLOPT_URL, $user_url1)  ;
     curl_setopt($ch, CURLOPT_POSTFIELDS, null) ;
 
-    // $user_res = json_decode(curl_exec($ch), true) ;
-    $user_res = curl_exec($ch) ;
+    $user_res1 = json_decode(curl_exec($ch), true) ;
     logError('zimuzu.tv', 'get user info', $ch) ;
 
 	# 从个人信息页面中筛选出连续签到天数
+	$user_url2 = 'http://www.zimuzu.tv/user/user' ;   // 字幕组登录会员个人信息地址[连续签到天数]
+	curl_setopt($ch, CURLOPT_COOKIE, $cookie)  ;
+    curl_setopt($ch, CURLOPT_URL, $user_url2)  ;
+    curl_setopt($ch, CURLOPT_POSTFIELDS, null) ;
+	$user_res2 = curl_exec($ch) ;
+	logError('zimuzu.tv', 'get last days', $ch) ;
+
 	$match    = array() ;
 	$pattern  = '/已连续签到：<\/span><font class="f_u0">\d+ *天/' ;
-	if (preg_match( $pattern, $user_res, $match)) {
+	if (preg_match($pattern, $user_res2, $match)) {
 		$zmz_last = explode('">', $match[0]) ;
 		$zmz_last = explode(' ' , $zmz_last[1])[0] ;
 		$zmz_last = intval(trim($zmz_last)) ;
 	}
 
-	// print_r($zmz_last);
-    // print_r($user_res);
-
 	# 关闭 CURL 连接
 	curl_close($ch) ;
 
 	# 如果登录成功则记录今天已签到过
-	$is_zimuzu =  (1 == $login_res['status']) ? 1 : 0 ;
-	return (1 == $login_res['status']) ? true : false ;
+	$is_zimuzu =  (1 == $user_res1['status']) ? 1 : 0 ;
+	return (1 == $user_res1['status']) ? true : false ;
 }
 
 /**
@@ -261,6 +266,7 @@ function v2exLogin($username, $password) {
 	curl_setopt($ch, CURLOPT_COOKIEJAR, $_cookie) ;
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1) ;
 	$logined_index = curl_exec($ch) ;
+	print_r($logined_index);die;
 	
 	# 获得签到所需 once 值
 	$sign_once_ptrn = '/once=(\d){5}/' ;
@@ -294,19 +300,21 @@ function v2exLogin($username, $password) {
 
 /**
  * 纪录错误日志
- * @param $website
+ * @param $obj
  * @param $error
  * @param $ch
+ * @param $force 如果为真则直接把错误写入日志
  * @param Boolean true
  */
 function logError($obj='website', $error, $ch, $force=false) {
-	$http_res     = curl_getinfo($ch, CURLINFO_HTTP_CODE) ;
+	$http_res     = (!is_null($ch)) ? curl_getinfo($ch, CURLINFO_HTTP_CODE) : 200 ;
 
 	# 如果 HTTP 请求错误 或 需要强制性记录其他错误时则写入错误日志
 	if (200 != $http_res || $force) {
+		date_default_timezone_set('Asia/Shanghai') ;
 		$error = "\n".date('Y-m-d H:i:s').' => '.$obj.' '.$error.' error'."\n" ;
 		file_put_contents('login-bot.log', $error, FILE_APPEND) ;
-		curl_close($ch) ;
+		if (!is_null($ch)) curl_close($ch) ;
 		die ;
 	}
 	return true ;    // 返回 true 代表请求未错误
