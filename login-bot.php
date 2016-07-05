@@ -14,12 +14,11 @@ define('ZMZ_SIGN'  , true)         ;
 define('ZMZ_HOTKEY', true)         ;
 
 # 检查是否配置账户密码
-if (empty(ZMZ_USER) || ZMZ_USER == 'YOUR_ZMZ_USERNAME' ||
-	empty(ZMZ_PWD)  || ZMZ_PWD  == 'YOUR_ZMZ_PASSWORD') {
+if (empty(ZMZ_USER) || empty(ZMZ_PWD)) {
 	logError('user config:', 'userinfo of zimuzu.tv is', null, true) ;
 }
-if (empty(V2_MMBR) || V2_PWD == 'YOUR_V2_USERNAME' ||
-	empty(V2_PWD)  || V2_PWD == 'YOUR_V2_PASSWORD') {
+
+if (empty(V2_MMBR) || empty(V2_PWD)) {
 	logError('user config:', 'userinfo of v2ex.com is', null, true) ;
 }
 
@@ -81,7 +80,7 @@ if ($is_legal_date) {
 	}
 
 	if (0 == $login_log['is_v2ex']) {
-		v2exLogin(V2_MMBR, V2_PWD) ;	
+		v2exLogin(V2_MMBR, V2_PWD) ;
 		# 刷新登录信息
 		logInfo($is_zimuzu, $is_v2ex, $zmz_last, $v2_last) ;
 	}
@@ -209,30 +208,30 @@ function v2exLogin($username, $password) {
 	curl_setopt($ch, CURLOPT_URL, $login_url)      ;
 	curl_setopt_array($ch, $options)               ;
 	curl_setopt($ch, CURLOPT_COOKIEFILE, $_cookie) ;    // 包含 cookie 数据的文件名
-    curl_setopt($ch, CURLOPT_COOKIEJAR,  $_cookie) ;    // 连接结束后保存 cookie 信息的文件
-    $login_html = curl_exec($ch) ;
-    logError($v2_index, 'GET '.$login_url, $ch) ;
+  curl_setopt($ch, CURLOPT_COOKIEJAR,  $_cookie) ;    // 连接结束后保存 cookie 信息的文件
+  $login_html = curl_exec($ch) ;
+  logError($v2_index, 'GET '.$login_url, $ch) ;
 
-    # 获得登录所需 once 值
-    $matches = array() ;    // 保存登录名和密码的 input name
-    $match   = array() ;    // 保存 once 值
-    $pattern = '/([0-9A-Za-z]{64})/' ;
-    if (preg_match_all($pattern, $login_html, $matches)) {
-    	$input_user = $matches[0][0] ;
-    	$input_pwd  = $matches[1][1] ;
-    }
+  # 获得登录所需 once 值
+  $matches = array() ;    // 保存登录名和密码的 input name
+  $match   = array() ;    // 保存 once 值
+  $pattern = '/([0-9A-Za-z]{64})/' ;
+  if (preg_match_all($pattern, $login_html, $matches)) {
+  	$input_user = $matches[0][0] ;
+  	$input_pwd  = $matches[1][1] ;
+  }
 
-    if (preg_match('/type="hidden" value="(\d){5}" name="once"/', $login_html, $match)) {
-    	$once = intval(trim(explode('"', explode(' ', $match[0])[1])[1])) ;
-    }
+  if (preg_match('/type="hidden" value="(\d){5}" name="once"/', $login_html, $match)) {
+  	$once = intval(trim(explode('"', explode(' ', $match[0])[1])[1])) ;
+  }
 
-    # 获得登录 input 标签的 name 值
-    if (!isset($input_user) || !isset($input_pwd) || !isset($once)) {
-    	$input_user = isset($input_user) ? $input_user : '' ;
-    	$input_pwd  = isset($input_pwd)  ? $input_pwd  : '' ;
-    	$once       = isset($once)       ? $once       : '' ;
-    	logError('get input parameters:', 'user='.$input_user.' pwd='.$input_pwd.' once='.$once, $ch, true) ;
-    }
+  # 获得登录 input 标签的 name 值
+  if (!isset($input_user) || !isset($input_pwd) || !isset($once)) {
+  	$input_user = isset($input_user) ? $input_user : '' ;
+  	$input_pwd  = isset($input_pwd)  ? $input_pwd  : '' ;
+  	$once       = isset($once)       ? $once       : '' ;
+  	logError('get input parameters:', 'user='.$input_user.' pwd='.$input_pwd.' once='.$once, $ch, true) ;
+  }
 
 	# 2. 登录
 	$info = array(
@@ -251,10 +250,10 @@ function v2exLogin($username, $password) {
 	# 如果 $info 是一个数组，Content-Type 头将会被设置成 multipart/form-data
 	# !!! 所以 $info 是数组时不要在头部加入非 multipart/form-data 值的 Content-Type
 	// curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($info) ) ;    // 生成 urlencodeed 字符串
-	curl_setopt($ch, CURLOPT_POSTFIELDS, $info ) ;
+	curl_setopt($ch, CURLOPT_POSTFIELDS, $info) ;
 
 	curl_setopt($ch, CURLOPT_COOKIEFILE, $_cookie) ;    // 带 cookie 请求页面
-    curl_setopt($ch, CURLOPT_COOKIEJAR, $_cookie)  ;    // 连接结束后保存 cookie 信息的文件
+  curl_setopt($ch, CURLOPT_COOKIEJAR, $_cookie)  ;    // 连接结束后保存 cookie 信息的文件
 
 	$login_res = curl_exec($ch) ;
 	logError($v2_index, 'login', $ch) ;
@@ -266,8 +265,8 @@ function v2exLogin($username, $password) {
 	curl_setopt($ch, CURLOPT_COOKIEJAR, $_cookie) ;
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1) ;
 	$logined_index = curl_exec($ch) ;
-	print_r($logined_index);die;
-	
+	logError($v2_index, 'GET '.$v2_index, $ch) ;
+
 	# 获得签到所需 once 值
 	$sign_once_ptrn = '/once=(\d){5}/' ;
 	$sign_once      = preg_match($sign_once_ptrn, $logined_index, $sign_once_arr) ;
@@ -292,7 +291,8 @@ function v2exLogin($username, $password) {
 	$v2_last_ptrn = '/已连续登录 * (\d)+ *天/' ;
 	$v2_last      = preg_match($v2_last_ptrn, $sign_in_res2, $v2_last_arr) ;
 	$v2_last      = intval(trim(explode(' ', $v2_last_arr[0])[1])) ;
-	$is_v2ex      = 1 ;
+	$pre_v2_last  = json_decode(file_get_contents('login-bot.json'), true)['last']['v2ex'] ;
+	$is_v2ex      = (is_numeric($v2_last) && $v2_last > $pre_v2_last) ? 1 : 0 ;
 
 	# 6. 关闭 curl 连接句柄
 	curl_close($ch) ;
