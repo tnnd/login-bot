@@ -29,7 +29,7 @@ $zmz_last  = 0 ;
 $is_v2ex   = 0 ;
 $v2_last   = 0 ;
 
-date_default_timezone_set('Asia/Shanghai') ;
+date_default_timezone_set(TIMEZONE) ;
 
 # cookie 生存时间规定为 1 小时 新生成的 cookie 从 0 计算时间
 $v2_cookie_life     = filemtime('v2ex.cookie')   ;
@@ -52,7 +52,7 @@ if (empty($login_log)) {
 
 # 每 24 小时强制性清除 cookie 和重置登录状态为 0
 $pre_day  = $login_log['date'] ;
-$next_day = date('Y-m-d', strtotime('+1 day', strtotime($pre_day))) ;
+$next_day = date('Y-m-d', strtotime($pre_day.' +1 day')) ;
 if (date('Y-m-d', $time) == $next_day) {
 	file_put_contents('zimuzu.cookie', '')   ;
 	file_put_contents('v2ex.cookie', '')     ;
@@ -62,24 +62,25 @@ if (date('Y-m-d', $time) == $next_day) {
 }
 
 # 判断日期是否正确 只有当天或者新的一天才可以执行登录+签到
-$is_legal_date = (strtotime(date('Y-m-d')) >= strtotime($login_log['date'])) ? true : false ;
+# !!!! 但是为了避免在 00:00:00 左右出现登录字幕组的时候从旧 JSON 中取出 V2EX 已登录状态导致 V2EX 当日无法登录问题 这里加上一个半小时的保险时间
+# 也就是说每日开始前半小时不执行该脚本
+$is_legal_date = (time() >= strtotime($login_log['date'])+1800) ? true : false ;
 if ($is_legal_date) {
 	# 如果今天没有在字幕组签到过则登录字幕组并签到
 	if (0 == $login_log['is_zimuzu']) {
 		zimuzuLogin(ZMZ_USER, ZMZ_PWD, ZMZ_RMB) ;
-		# 未进行 v2ex 登录判断之前纪录字幕组登录信息的时候使用 json 文件中的信息更新
+		# 未进行 v2ex 登录判断之前纪录字幕组登录信息的时候 v2ex 的连续登录天数使用 json 文件中的信息更新
 		$is_v2ex = $login_log['is_v2ex'] ;
 		$v2_last = $login_log['last']['v2ex'] ;
 		# 刷新登录信息
 		logInfo($is_zimuzu, $is_v2ex, $zmz_last, $v2_last) ;
-	} else {
-		# 若已登录字幕组 则纪录 v2ex 登录信息的时候 字幕组的信息直接从 json 中取即可
-		# 否则在纪录 v2ex 登录信息时候字幕组信息将被重置
-		$is_zimuzu = $login_log['is_zimuzu'] ;
-		$zmz_last  = $login_log['last']['zimuzu'] ;
 	}
 
 	if (0 == $login_log['is_v2ex']) {
+		# 若已登录字幕组 则纪录 v2ex 登录信息的时候 字幕组的连续登录天数直接从 json 中取即可
+		# 否则在纪录 v2ex 登录信息时候字幕组信息将被重置
+		$is_zimuzu = $login_log['is_zimuzu'] ;
+		$zmz_last  = $login_log['last']['zimuzu'] ;
 		v2exLogin(V2_MMBR, V2_PWD) ;
 		# 刷新登录信息
 		logInfo($is_zimuzu, $is_v2ex, $zmz_last, $v2_last) ;

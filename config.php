@@ -5,3 +5,5 @@ define('ZMZ_PWD'   , 'YOUR_ZMZ_PASSWORD') ;    // 你的字幕组用户密码 �
 
 define('V2_MMBR'   , 'YOUR_V2_USERNAME')  ;    // 你的 V2EX 用户 ID 替换掉 YOUR_V2_USERNAME
 define('V2_PWD'    , 'YOUR_V2_PASSWORD')  ;    // 你的 V2EX 用户密码 替换掉 YOUR_V2_PASSWORD
+
+define('TIMEZONE', 'Asia/Shanghai') ;          // 请填写正确的操作系统时区 重要 !!! 此脚本依赖时间函数
